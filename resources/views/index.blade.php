@@ -1,412 +1,140 @@
+@props([
+    'paginator',
+    'recordsPerPageSelectOptions',
+])
+
 @php
-    $actions = $getActions();
-    $columns = $getColumns();
-    $contentFooter = $getContentFooter();
-    $header = $getHeader();
-    $headerActions = $getHeaderActions();
-    $heading = $getHeading();
-    $isSearchVisible = $isSearchable();
-    $isFiltersDropdownVisible = $isFilterable();
-
-    $columnsCount = count($columns);
-    if (count($actions)) $columnsCount++;
-    if ($isSelectionEnabled()) $columnsCount++;
-
-    $getHiddenClasses = function (\Filament\Tables\Columns\Column $column): ?string {
-        if ($breakpoint = $column->getHiddenFrom()) {
-            return match ($breakpoint) {
-                'sm' => 'sm:hidden',
-                'md' => 'md:hidden',
-                'lg' => 'lg:hidden',
-                'xl' => 'xl:hidden',
-                '2xl' => '2xl:hidden',
-            };
-        }
-
-        if ($breakpoint = $column->getVisibleFrom()) {
-            return match ($breakpoint) {
-                'sm' => 'hidden sm:table-cell',
-                'md' => 'hidden md:table-cell',
-                'lg' => 'hidden lg:table-cell',
-                'xl' => 'hidden xl:table-cell',
-                '2xl' => 'hidden 2xl:table-cell',
-            };
-        }
-
-        return null;
-    };
+    $isSimple = ! $paginator instanceof \Illuminate\Pagination\LengthAwarePaginator;
 @endphp
 
-<div
-        x-data="{
-        hasHeader: true,
-
-        isLoading: false,
-
-        selectedRecords: [],
-
-        shouldCheckUniqueSelection: true,
-
-        init: function () {
-            $wire.on('deselectAllTableRecords', () => this.deselectAllRecords())
-
-            $watch('selectedRecords', () => {
-                if (! this.shouldCheckUniqueSelection) {
-                    this.shouldCheckUniqueSelection = true
-
-                    return
-                }
-
-                this.selectedRecords = [...new Set(this.selectedRecords)]
-
-                this.shouldCheckUniqueSelection = false
-            })
-        },
-
-        mountBulkAction: function (name) {
-            $wire.mountTableBulkAction(name, this.selectedRecords)
-        },
-
-        toggleSelectRecordsOnPage: function () {
-            let keys = this.getRecordsOnPage()
-
-            if (this.areRecordsSelected(keys)) {
-                this.deselectRecords(keys)
-
-                return
-            }
-
-            this.selectRecords(keys)
-        },
-
-        getRecordsOnPage: function () {
-            let keys = []
-
-            for (checkbox of $el.getElementsByClassName('table-row-checkbox')) {
-                keys.push(checkbox.value)
-            }
-
-            return keys
-        },
-
-        selectRecords: function (keys) {
-            for (key of keys) {
-                if (this.isRecordSelected(key)) {
-                    continue
-                }
-
-                this.selectedRecords.push(key)
-            }
-        },
-
-        deselectRecords: function (keys) {
-            for (key of keys) {
-                let index = this.selectedRecords.indexOf(key)
-
-                if (index === -1) {
-                    continue
-                }
-
-                this.selectedRecords.splice(index, 1)
-            }
-        },
-
-        selectAllRecords: async function () {
-            this.isLoading = true
-
-            this.selectedRecords = (await $wire.getAllTableRecordKeys()).map((key) => key.toString())
-
-            this.isLoading = false
-        },
-
-        deselectAllRecords: function () {
-            this.selectedRecords = []
-        },
-
-        isRecordSelected: function (key) {
-            return this.selectedRecords.includes(key)
-        },
-
-        areRecordsSelected: function (keys) {
-            return keys.every(key => this.isRecordSelected(key))
-        },
-    }"
-        class="filament-tables-component"
+<nav
+        role="navigation"
+        aria-label="{{ __('tables::table.pagination.label') }}"
+        class="flex items-center justify-between filament-tables-pagination"
 >
-    <x-tables::container>
-        <div
-                x-show="hasHeader = ({{ ($renderHeader = ($header || $heading || $headerActions || $isSearchVisible || $isFiltersDropdownVisible)) ? 'true' : 'false' }} || selectedRecords.length)"
-                {!! ! $renderHeader ? 'x-cloak' : null !!}
-        >
-
-            <div
-                    x-show="{{ ($renderHeaderDiv = ($isSearchVisible || $isFiltersDropdownVisible)) ? 'true' : 'false' }} || selectedRecords.length"
-                    {!! ! $renderHeaderDiv ? 'x-cloak' : null !!}
-                    class="flex items-center mb-5 h-14 space-x-3"
-            >
-
-                @yield('table-header')
-
-                <div class="flex-grow"></div>
-
-                <div>
-                    <x-tables::bulk-actions
-                            x-show="selectedRecords.length"
-                            :actions="$getBulkActions()"
-                    />
-                </div>
-
-                @if ($isSearchVisible || $isFiltersDropdownVisible)
-                    <div class="w-full md:w-auto flex items-center gap-2 md:max-w-md">
-                        @if ($isSearchVisible)
-                            <div class="flex-1">
-                                <x-tables::search-input />
-                            </div>
-                        @endif
-
-                        @if ($isFiltersDropdownVisible)
-                            <x-tables::filters
-                                    :form="$getFiltersForm()"
-                                    :width="$getFiltersFormWidth()"
-                                    class="shrink-0"
-                            />
-                        @endif
-                    </div>
-                @endif
-
-                @yield('table-actions')
-
-            </div>
+    <div class="flex justify-between items-center flex-1 lg:hidden">
+        <div class="w-10">
+            @if ($paginator->hasPages() && (! $paginator->onFirstPage()))
+                <x-tables::icon-button
+                        :wire:click="'previousPage(\'' . $paginator->getPageName() . '\')'"
+                        rel="prev"
+                        icon="heroicon-o-chevron-left"
+                        :label="__('tables::table.pagination.buttons.previous.label')"
+                />
+            @endif
         </div>
 
-        @yield('table-after-header')
+        <x-tables::pagination.records-per-page-selector :options="$recordsPerPageSelectOptions" />
 
-        <div
-                @class([
-                    'overflow-y-auto relative',
-                    'dark:border-gray-700' => config('tables.dark_mode'),
-                    'rounded-t-xl' => ! $renderHeader,
-                    'border-t' => $renderHeader,
-                ])
-                x-bind:class="{
-                'rounded-t-xl': ! hasHeader,
-                'border-t': hasHeader,
-            }"
-        >
-            @if (($records = $getRecords())->count())
-                <x-tables::table>
-                    <x-slot name="header">
-                        @if ($isSelectionEnabled())
-                            <x-tables::checkbox-cell>
-                                <x-slot
-                                        name="checkbox"
-                                        x-on:click="toggleSelectRecordsOnPage"
-                                        x-bind:checked="
-                                        if (areRecordsSelected(getRecordsOnPage())) {
-                                            $el.checked = true
+        <div class="w-10">
+            @if ($paginator->hasPages() && $paginator->hasMorePages())
+                <x-tables::icon-button
+                        :wire:click="'nextPage(\'' . $paginator->getPageName() . '\')'"
+                        rel="next"
+                        icon="heroicon-o-chevron-right"
+                        :label="__('tables::table.pagination.buttons.next.label')"
+                />
+            @endif
+        </div>
+    </div>
 
-                                            return 'checked'
-                                        }
-
-                                        $el.checked = false
-
-                                        return null
-                                    "
-                                ></x-slot>
-                            </x-tables::checkbox-cell>
-                        @endif
-
-                        @foreach ($columns as $column)
-                            <x-tables::header-cell
-                                    :extra-attributes="$column->getExtraHeaderAttributes()"
-                                    :is-sort-column="$getSortColumn() === $column->getName()"
-                                    :name="$column->getName()"
-                                    :alignment="$column->getAlignment()"
-                                    :sortable="$column->isSortable()"
-                                    :sort-direction="$getSortDirection()"
-                                    :class="$getHiddenClasses($column)"
-                            >
-                                {{ $column->getLabel() }}
-                            </x-tables::header-cell>
-                        @endforeach
-
-                        @if (count($actions))
-                            <th @class([
-                                'w-5',
-                                'dark:bg-gray-800' => config('tables.dark_mode'),
-                            ])></th>
-                        @endif
-                    </x-slot>
-
-                    @if ($isSelectionEnabled())
-                        <x-tables::selection-indicator
-                                :all-records-count="$getAllRecordsCount()"
-                                :colspan="$columnsCount"
-                                x-show="selectedRecords.length"
-                        >
-                            <x-slot name="selectedRecordsCount">
-                                <span x-text="selectedRecords.length"></span>
-                            </x-slot>
-                        </x-tables::selection-indicator>
+    <div class="hidden flex-1 items-center lg:grid grid-cols-3">
+        <div class="flex items-center">
+            @if ($isSimple)
+                @if (! $paginator->onFirstPage())
+                    <x-tables::button
+                            :wire:click="'previousPage(\'' . $paginator->getPageName() . '\')'"
+                            icon="heroicon-s-chevron-left"
+                            rel="prev"
+                            size="sm"
+                            color="secondary"
+                    >
+                        {{ __('tables::table.pagination.buttons.previous.label') }}
+                    </x-tables::button>
+                @endif
+            @else
+                <div @class([
+                    'pl-2 text-sm font-medium',
+                    'dark:text-white' => config('tables.dark_mode'),
+                ])>
+                    @if ($paginator->total() > 1)
+                        {{ __('tables::table.pagination.overview', [
+                            'first' => $paginator->firstItem(),
+                            'last' => $paginator->lastItem(),
+                            'total' => $paginator->total(),
+                        ]) }}
                     @endif
+                </div>
+            @endif
+        </div>
 
-                    @foreach ($records as $record)
-                        @php
-                            $recordUrl = $getRecordUrl($record);
-                        @endphp
+        <div class="flex items-center justify-center">
+            <x-tables::pagination.records-per-page-selector :options="$recordsPerPageSelectOptions" />
+        </div>
 
-                        <x-tables::row wire:key="{{ $record->getKey() }}">
-                            @if ($isSelectionEnabled())
-                                <x-tables::checkbox-cell>
-                                    <x-slot
-                                            name="checkbox"
-                                            x-model="selectedRecords"
-                                            :value="$record->getKey()"
-                                            class="table-row-checkbox"
-                                    ></x-slot>
-                                </x-tables::checkbox-cell>
+        <div class="flex items-center justify-end">
+            @if ($isSimple)
+                @if ($paginator->hasMorePages())
+                    <x-tables::button
+                            :wire:click="'nextPage(\'' . $paginator->getPageName() . '\')'"
+                            icon="heroicon-s-chevron-right"
+                            icon-position="after"
+                            rel="next"
+                            size="sm"
+                            color="secondary"
+                    >
+                        {{ __('tables::table.pagination.buttons.next.label') }}
+                    </x-tables::button>
+                @endif
+            @else
+                @if ($paginator->hasPages())
+                    <div @class([
+                        'py-3 border rounded-lg',
+                        'dark:border-gray-600' => config('tables.dark_mode'),
+                    ])>
+                        <ol @class([
+                            'flex items-center text-sm text-gray-500 divide-x divide-gray-300',
+                            'dark:text-gray-400' => config('tables.dark_mode'),
+                        ])>
+                            @if (! $paginator->onFirstPage())
+                                <x-tables::pagination.item
+                                        :wire:click="'previousPage(\'' . $paginator->getPageName() . '\')'"
+                                        icon="heroicon-s-chevron-left"
+                                        aria-label="{{ __('tables::table.pagination.buttons.previous.label') }}"
+                                        rel="prev"
+                                />
                             @endif
 
-                            @foreach ($columns as $column)
-                                @php
-                                    $column->record($record);
-                                @endphp
+                            @foreach ($paginator->render()->offsetGet('elements') as $element)
+                                @if (is_string($element))
+                                    <x-tables::pagination.item :label="$element" disabled />
+                                @endif
 
-                                <x-tables::cell
-                                        :action="$column->getAction()"
-                                        :name="$column->getName()"
-                                        :alignment="$column->getAlignment()"
-                                        :record="$record"
-                                        :should-open-url-in-new-tab="$column->shouldOpenUrlInNewTab()"
-                                        :url="$column->getUrl() ?? $recordUrl"
-                                        :class="$getHiddenClasses($column)"
-                                >
-                                    {{ $column }}
-                                </x-tables::cell>
+                                @if (is_array($element))
+                                    @foreach ($element as $page => $url)
+                                        <x-tables::pagination.item
+                                                :wire:click="'gotoPage(' . $page . ', \'' . $paginator->getPageName() . '\')'"
+                                                :label="$page"
+                                                :aria-label="__('tables::table.pagination.buttons.go_to_page.label', ['page' => $page])"
+                                                :active="$page === $paginator->currentPage()"
+                                                :wire:key="'pagination-' . $paginator->getPageName() . '-page' . $page"
+                                        />
+                                    @endforeach
+                                @endif
                             @endforeach
 
-                            @if (count($actions))
-                                <x-tables::actions-cell :actions="$actions" :record="$record" />
+                            @if ($paginator->hasMorePages())
+                                <x-tables::pagination.item
+                                        :wire:click="'nextPage(\'' . $paginator->getPageName() . '\')'"
+                                        icon="heroicon-s-chevron-right"
+                                        aria-label="{{ __('tables::table.pagination.buttons.next.label') }}"
+                                        rel="next"
+                                />
                             @endif
-                        </x-tables::row>
-                    @endforeach
-
-                    @if ($contentFooter)
-                        <x-slot name="footer">
-                            {{ $contentFooter->with(['columns' => $columns, 'records' => $records]) }}
-                        </x-slot>
-                    @endif
-
-                </x-tables::table>
-            @else
-                @if ($emptyState = $getEmptyState())
-                    {{ $emptyState }}
-                @else
-                    <div class="flex items-center justify-center p-4">
-                        <x-tables::empty-state :icon="$getEmptyStateIcon()" :actions="$getEmptyStateActions()">
-                            <x-slot name="heading">
-                                {{ $getEmptyStateHeading() }}
-                            </x-slot>
-
-                            <x-slot name="description">
-                                {{ $getEmptyStateDescription() }}
-                            </x-slot>
-                        </x-tables::empty-state>
+                        </ol>
                     </div>
                 @endif
             @endif
         </div>
-
-        @if ($isPaginationEnabled())
-            <div @class([
-                'p-2',
-                'dark:border-gray-700' => config('tables.dark_mode'),
-            ])>
-                <x-tables::pagination
-                        :paginator="$records"
-                        :records-per-page-select-options="$getRecordsPerPageSelectOptions()"
-                />
-            </div>
-        @endif
-    </x-tables::container>
-
-    <form wire:submit.prevent="callMountedTableAction">
-        @php
-            $action = $getMountedAction();
-        @endphp
-
-        <x-tables::modal :id="\Illuminate\Support\Str::of(static::class)->replace('\\', '\\\\') . '-action'" :width="$action?->getModalWidth()" display-classes="block">
-            @if ($action)
-                @if ($action->isModalCentered())
-                    <x-slot name="heading">
-                        {{ $action->getModalHeading() }}
-                    </x-slot>
-
-                    @if ($subheading = $action->getModalSubheading())
-                        <x-slot name="subheading">
-                            {{ $subheading }}
-                        </x-slot>
-                    @endif
-                @else
-                    <x-slot name="header">
-                        <x-tables::modal.heading>
-                            {{ $action->getModalHeading() }}
-                        </x-tables::modal.heading>
-                    </x-slot>
-                @endif
-
-                @if ($action->hasFormSchema())
-                    {{ $getMountedActionForm() }}
-                @endif
-
-                <x-slot name="footer">
-                    <x-tables::modal.actions :full-width="$action->isModalCentered()">
-                        @foreach ($action->getModalActions() as $modalAction)
-                            {{ $modalAction }}
-                        @endforeach
-                    </x-tables::modal.actions>
-                </x-slot>
-            @endif
-        </x-tables::modal>
-    </form>
-
-    <form wire:submit.prevent="callMountedTableBulkAction">
-        @php
-            $action = $getMountedBulkAction();
-        @endphp
-
-        <x-tables::modal :id="\Illuminate\Support\Str::of(static::class)->replace('\\', '\\\\') . '-bulk-action'" :width="$action?->getModalWidth()" display-classes="block">
-            @if ($action)
-                @if ($action->isModalCentered())
-                    <x-slot name="heading">
-                        {{ $action->getModalHeading() }}
-                    </x-slot>
-
-                    @if ($subheading = $action->getModalSubheading())
-                        <x-slot name="subheading">
-                            {{ $subheading }}
-                        </x-slot>
-                    @endif
-                @else
-                    <x-slot name="header">
-                        <x-tables::modal.heading>
-                            {{ $action->getModalHeading() }}
-                        </x-tables::modal.heading>
-                    </x-slot>
-                @endif
-
-                @if ($action->hasFormSchema())
-                    {{ $getMountedBulkActionForm() }}
-                @endif
-
-                <x-slot name="footer">
-                    <x-tables::modal.actions :full-width="$action->isModalCentered()">
-                        @foreach ($action->getModalActions() as $modalAction)
-                            {{ $modalAction }}
-                        @endforeach
-                    </x-tables::modal.actions>
-                </x-slot>
-            @endif
-        </x-tables::modal>
-    </form>
-</div>
+    </div>
+</nav>
