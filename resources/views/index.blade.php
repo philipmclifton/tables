@@ -38,7 +38,7 @@
 @endphp
 
 <div
-    x-data="{
+        x-data="{
         hasHeader: true,
 
         isLoading: false,
@@ -131,41 +131,28 @@
             return keys.every(key => this.isRecordSelected(key))
         },
     }"
-    class="filament-tables-component"
+        class="filament-tables-component"
 >
     <x-tables::container>
         <div
-            x-show="hasHeader = ({{ ($renderHeader = ($header || $heading || $headerActions || $isSearchVisible || $isFiltersDropdownVisible)) ? 'true' : 'false' }} || selectedRecords.length)"
-            {!! ! $renderHeader ? 'x-cloak' : null !!}
+                x-show="hasHeader = ({{ ($renderHeader = ($header || $heading || $headerActions || $isSearchVisible || $isFiltersDropdownVisible)) ? 'true' : 'false' }} || selectedRecords.length)"
+                {!! ! $renderHeader ? 'x-cloak' : null !!}
         >
-            @if ($header)
-                {{ $header }}
-            @elseif ($heading || $headerActions)
-                <div class="px-2 pt-2 space-y-2">
-                    <x-tables::header :actions="$headerActions">
-                        <x-slot name="heading">
-                            {{ $heading }}
-                        </x-slot>
-
-                        <x-slot name="description">
-                            {{ $getDescription() }}
-                        </x-slot>
-                    </x-tables::header>
-
-                    <x-tables::hr x-show="{{ ($isSearchVisible || $isFiltersDropdownVisible) ? 'true' : 'false' }} || selectedRecords.length" />
-                </div>
-            @endif
 
             <div
-                x-show="{{ ($renderHeaderDiv = ($isSearchVisible || $isFiltersDropdownVisible)) ? 'true' : 'false' }} || selectedRecords.length"
-                {!! ! $renderHeaderDiv ? 'x-cloak' : null !!}
-                class="flex items-center mb-5 h-14"
+                    x-show="{{ ($renderHeaderDiv = ($isSearchVisible || $isFiltersDropdownVisible)) ? 'true' : 'false' }} || selectedRecords.length"
+                    {!! ! $renderHeaderDiv ? 'x-cloak' : null !!}
+                    class="flex items-center mb-5 h-14 space-x-3"
             >
+
+                @yield('table-header')
+
+                <div class="flex-grow"></div>
+
                 <div>
                     <x-tables::bulk-actions
-                        x-show="selectedRecords.length"
-                        :actions="$getBulkActions()"
-                        class="mr-2"
+                            x-show="selectedRecords.length"
+                            :actions="$getBulkActions()"
                     />
                 </div>
 
@@ -179,24 +166,29 @@
 
                         @if ($isFiltersDropdownVisible)
                             <x-tables::filters
-                                :form="$getFiltersForm()"
-                                :width="$getFiltersFormWidth()"
-                                class="shrink-0"
+                                    :form="$getFiltersForm()"
+                                    :width="$getFiltersFormWidth()"
+                                    class="shrink-0"
                             />
                         @endif
                     </div>
                 @endif
+
+                @yield('table-actions')
+
             </div>
         </div>
 
+        @yield('table-after-header')
+
         <div
-            @class([
-                'overflow-y-auto relative',
-                'dark:border-gray-700' => config('tables.dark_mode'),
-                'rounded-t-xl' => ! $renderHeader,
-                'border-t' => $renderHeader,
-            ])
-            x-bind:class="{
+                @class([
+                    'overflow-y-auto relative',
+                    'dark:border-gray-700' => config('tables.dark_mode'),
+                    'rounded-t-xl' => ! $renderHeader,
+                    'border-t' => $renderHeader,
+                ])
+                x-bind:class="{
                 'rounded-t-xl': ! hasHeader,
                 'border-t': hasHeader,
             }"
@@ -207,9 +199,9 @@
                         @if ($isSelectionEnabled())
                             <x-tables::checkbox-cell>
                                 <x-slot
-                                    name="checkbox"
-                                    x-on:click="toggleSelectRecordsOnPage"
-                                    x-bind:checked="
+                                        name="checkbox"
+                                        x-on:click="toggleSelectRecordsOnPage"
+                                        x-bind:checked="
                                         if (areRecordsSelected(getRecordsOnPage())) {
                                             $el.checked = true
 
@@ -226,13 +218,13 @@
 
                         @foreach ($columns as $column)
                             <x-tables::header-cell
-                                :extra-attributes="$column->getExtraHeaderAttributes()"
-                                :is-sort-column="$getSortColumn() === $column->getName()"
-                                :name="$column->getName()"
-                                :alignment="$column->getAlignment()"
-                                :sortable="$column->isSortable()"
-                                :sort-direction="$getSortDirection()"
-                                :class="$getHiddenClasses($column)"
+                                    :extra-attributes="$column->getExtraHeaderAttributes()"
+                                    :is-sort-column="$getSortColumn() === $column->getName()"
+                                    :name="$column->getName()"
+                                    :alignment="$column->getAlignment()"
+                                    :sortable="$column->isSortable()"
+                                    :sort-direction="$getSortDirection()"
+                                    :class="$getHiddenClasses($column)"
                             >
                                 {{ $column->getLabel() }}
                             </x-tables::header-cell>
@@ -248,9 +240,9 @@
 
                     @if ($isSelectionEnabled())
                         <x-tables::selection-indicator
-                            :all-records-count="$getAllRecordsCount()"
-                            :colspan="$columnsCount"
-                            x-show="selectedRecords.length"
+                                :all-records-count="$getAllRecordsCount()"
+                                :colspan="$columnsCount"
+                                x-show="selectedRecords.length"
                         >
                             <x-slot name="selectedRecordsCount">
                                 <span x-text="selectedRecords.length"></span>
@@ -267,10 +259,10 @@
                             @if ($isSelectionEnabled())
                                 <x-tables::checkbox-cell>
                                     <x-slot
-                                        name="checkbox"
-                                        x-model="selectedRecords"
-                                        :value="$record->getKey()"
-                                        class="table-row-checkbox"
+                                            name="checkbox"
+                                            x-model="selectedRecords"
+                                            :value="$record->getKey()"
+                                            class="table-row-checkbox"
                                     ></x-slot>
                                 </x-tables::checkbox-cell>
                             @endif
@@ -281,13 +273,13 @@
                                 @endphp
 
                                 <x-tables::cell
-                                    :action="$column->getAction()"
-                                    :name="$column->getName()"
-                                    :alignment="$column->getAlignment()"
-                                    :record="$record"
-                                    :should-open-url-in-new-tab="$column->shouldOpenUrlInNewTab()"
-                                    :url="$column->getUrl() ?? $recordUrl"
-                                    :class="$getHiddenClasses($column)"
+                                        :action="$column->getAction()"
+                                        :name="$column->getName()"
+                                        :alignment="$column->getAlignment()"
+                                        :record="$record"
+                                        :should-open-url-in-new-tab="$column->shouldOpenUrlInNewTab()"
+                                        :url="$column->getUrl() ?? $recordUrl"
+                                        :class="$getHiddenClasses($column)"
                                 >
                                     {{ $column }}
                                 </x-tables::cell>
@@ -331,8 +323,8 @@
                 'dark:border-gray-700' => config('tables.dark_mode'),
             ])>
                 <x-tables::pagination
-                    :paginator="$records"
-                    :records-per-page-select-options="$getRecordsPerPageSelectOptions()"
+                        :paginator="$records"
+                        :records-per-page-select-options="$getRecordsPerPageSelectOptions()"
                 />
             </div>
         @endif
