@@ -1,1 +1,9 @@
 /vendor
+/.DS_Store
+/.idea/
+/resources/.DS_Store
+/resources/lang/.DS_Store
+/resources/views/.DS_Store
+/src/.DS_Store
+/src/Actions/.DS_Store
+/src/Commands/.DS_Store
