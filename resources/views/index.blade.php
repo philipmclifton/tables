@@ -183,7 +183,7 @@
 
         <div
             @class([
-                'overflow-y-auto relative',
+                'relative',
                 'dark:border-gray-700' => config('tables.dark_mode'),
                 'rounded-t-xl' => ! $renderHeader,
                 'border-t' => $renderHeader,
